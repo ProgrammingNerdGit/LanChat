@@ -61,11 +61,9 @@ class client:
 			print("not valid ip/port")
 
 	def getMessages(self):
-		try:
-			page = requests.get(self.url+"/?get") # "/?get" used in url to get data without sending data
+			page = requests.get(self.url+"/?get",stream=True,timeout=1) # "/?get" used in url to get data without sending data
 			return BeautifulSoup(page.content,'lxml').find("div").text.replace("%E2%96%88"," ").replace("\n","%G2%12%99") # return data parsed and in a list (%E2%96%88 is space keycode)
-		except:
-			print("not valid ip/port")
+
 		
 		
 if(sys.argv[1] == "-startServ"): # checks for exturnal program asking to create a server
