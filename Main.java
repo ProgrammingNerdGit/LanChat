@@ -133,7 +133,7 @@ public class Main {
 
     public static void sendData(String Data) throws IOException {
         if(connectedToServer){
-            Process p = Runtime.getRuntime().exec("C:\\Users\\gavin\\OneDrive\\Desktop\\LanC\\Export\\client.exe -sendData "+serverIP+" "+Data.replaceAll(" ","%E2%96%88"));
+            Process p = Runtime.getRuntime().exec("client.exe -sendData "+serverIP+" "+Data.replaceAll(" ","%E2%96%88"));
 
 
         }
