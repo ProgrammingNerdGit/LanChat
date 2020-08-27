@@ -7,10 +7,14 @@ from http.server import HTTPServer, BaseHTTPRequestHandler # module for creating
 import threading # module used for useing threads
 import time # module used for delay
 import sys # module for connection with exturnal program
+import os # mudule for finding server ip
+import random # module for finding valid port
 
 data = '' # temperary veriable for parseing the data from the server
 
 timeBetwenRefresh = 0.2 # Time in second between each time the client asks for data from server
+
+startServerOutput = True
 
 class Serv(BaseHTTPRequestHandler):
 	def do_GET(self):
@@ -33,7 +37,8 @@ class Serv(BaseHTTPRequestHandler):
 
 def serverInit(httpd_,ip,port):
 		httpd = httpd_
-		print("Server Started")
+		if(startServerOutput):
+			print("Server Started")
 		httpd.serve_forever()
 
 class server:
@@ -55,34 +60,45 @@ class client:
 		self.url = url
 
 	def sendMessage(self,message):
-		try:
-			page = requests.get(str(self.url+"/?text="+message)) # "/?text=" used int url to send data to the server (used before the message)
-		except:
-			print("not valid ip/port")
+
+		page = requests.get(str(self.url+"/?text="+message),stream=True,timeout=1) # "/?text=" used int url to send data to the server (used before the message)
+
 
 	def getMessages(self):
-			page = requests.get(self.url+"/?get",stream=True,timeout=1) # "/?get" used in url to get data without sending data
-			return BeautifulSoup(page.content,'lxml').find("div").text.replace("%E2%96%88"," ").replace("\n","%G2%12%99") # return data parsed and in a list (%E2%96%88 is space keycode)
+		page = requests.get(self.url+"/?get",stream=True,timeout=1) # "/?get" used in url to get data without sending data
+		return BeautifulSoup(page.content,'lxml').find("div").text.replace("%E2%96%88"," ").replace("\n","%G2%12%99") # return data parsed and in a list (%E2%96%88 is space keycode)
 
 		
 		
-if(sys.argv[1] == "-startServ"): # checks for exturnal program asking to create a server
-	server = server(sys.argv[2],int(sys.argv[3])) # gets data from exturnal program and makes server (sys.argv[2]) = ip) (sys.argv[3]) = port)
+if(sys.argv[1] == "-startServ"):
+	server = server(sys.argv[2],int(sys.argv[3])) #(sys.argv[2]) = ip) (sys.argv[3]) = port)
 	server.startServer()
 
 
-if(sys.argv[1] == "-getData"): # checks for exturnal program asking to get data from a server
-	#print(sys.argv)
-	client = client(sys.argv[2]) #create client connection with data from ext. program (sys.argv[2]) = ip)
-	print(client.getMessages()) #get data from server
+if(sys.argv[1] == "-getData"):
+	client = client(sys.argv[2]) # (sys.argv[2]) = ip)
+	print(client.getMessages()) 
 
-if(sys.argv[1] == "-sendData"): # checks for exturnal program asking to send data from a server
-	client = client(sys.argv[2]) #create client connection with data from ext. program (sys.argv[2]) = ip)
-	client.sendMessage(sys.argv[3]) # sends data to server (sys.argv[3]) = message)
+if(sys.argv[1] == "-sendData"):
+	client = client(sys.argv[2]) #(sys.argv[2]) = ip)
+	client.sendMessage(sys.argv[3]) #(sys.argv[3]) = message)
+
+if(sys.argv[1] == "-findServIp"):
+	ip,port ="",""
+	for a in os.popen("ipconfig").read().split("\n"):
+		if(a.split(":")[0] == "   IPv4 Address. . . . . . . . . . . "):
+			ip = a.split(":")[1].replace(" ","")
+			break
+
 	
-
-
-
-
-
-
+	while True:
+		guessPort = random.randint(1000,9999)
+		try:
+			startServerOutput = False
+			server = server(ip,guessPort) #(sys.argv[2]) = ip) (sys.argv[3]) = port)
+			server.startServer()
+			server.stopServer()
+			print(ip+":"+str(guessPort))
+			break
+		except:
+			pass
