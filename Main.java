@@ -1,9 +1,10 @@
-package com.gavin;
+package com.company;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import  java.io.*;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.util.*;
 import java.awt.*;
 import java.util.List;
@@ -33,7 +34,12 @@ class runtime extends Thread {
                             InputStreamReader(p.getInputStream()));
                     Data = procInput.readLine();
                 }
-                messages.messages.setText("<html>"+Data.replaceAll("%G2%12%99","<br/>")+"</html>");
+                try{
+                    messages.messages.setText("<html>"+Data.replaceAll("%G2%12%99","<br/>")+"</html>");
+                } catch (Exception e) {
+                    messages.messages.setText("<html>"+Data+"</html>");
+                }
+
 
             }
         }
@@ -103,6 +109,9 @@ public class Main {
         JButton join = new JButton("join server");
         join.setBounds(frame.getBounds().width/2-25,0,100,25);
 
+        JButton startServer = new JButton("start server");
+        startServer.setBounds(0,0,110,25);
+
         JButton Send = new JButton("send");
         Send.setBounds(5,330,65,25);
 
@@ -116,11 +125,62 @@ public class Main {
             }
         });
 
+        startServer.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                String data = "";
+                try {
+                    Process p = Runtime.getRuntime().exec("client.exe -findServIp");
+                    p.waitFor();
+                    JFrame frame2 = new JFrame("LanChat Start Server");
+                    frame2.setResizable(false);
+                    frame2.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                    frame2.setBounds(0, 0, 300, 300);
+                    frame2.setLayout(null);
+                    frame2.getContentPane().setBackground(new Color(18, 22, 49));
+
+
+                    JButton start = new JButton("start server");
+                    start.setBounds(30,0,120,25);
+
+                    BufferedReader procInput = new BufferedReader(new
+                            InputStreamReader(p.getInputStream()));
+                    data =  procInput.readLine();
+
+                    System.out.println(data);
+
+                    JLabel dataText=new JLabel();
+                    dataText.setText("<html>after pressing 'start server' put: <u><b>"+data+"</b></u> :as the ip/url to enter server</html>");
+                    dataText.setBounds(0,30,300,75);
+                    dataText.setForeground(new Color(0, 255, 238));
+                    dataText.setFont(new Font("Arial",Font.PLAIN,20));
+
+                    String finalData = data;
+                    start.addActionListener(new ActionListener() {
+                        public void actionPerformed(ActionEvent e) {
+                            try {
+                                Process p = Runtime.getRuntime().exec("cmd.exe /c start client.exe -startServ "+finalData.replaceAll(":"," "));
+                                frame2.dispose();
+                            } catch (IOException ex) {
+                                ex.printStackTrace();
+                            }
+                        }
+                    });
+
+                    frame2.add(start);
+                    frame2.add(dataText);
+                    frame2.setVisible(true);
+                } catch (IOException | InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+
         join.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 joinRoomWindow();
             }
         });
+        frame.add(startServer);
         frame.add(Send);
         frame.add(messages.messages);
         frame.add(input);
@@ -134,8 +194,6 @@ public class Main {
     public static void sendData(String Data) throws IOException {
         if(connectedToServer){
             Process p = Runtime.getRuntime().exec("client.exe -sendData "+serverIP+" "+Data.replaceAll(" ","%E2%96%88"));
-
-
         }
     }
 }
