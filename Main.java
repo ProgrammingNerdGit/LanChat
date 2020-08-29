@@ -1,4 +1,6 @@
 package com.company;
+import com.sun.javafx.image.impl.IntArgb;
+
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -14,6 +16,7 @@ import java.util.stream.Collectors;
 class messages{
     public static JLabel messages=new JLabel();
 }
+
 class runtime extends Thread {
     static String serverIP = "";
     public void init(String serverIPs){
@@ -35,10 +38,12 @@ class runtime extends Thread {
                     Data = procInput.readLine();
                 }
                 try{
-                    messages.messages.setText("<html>"+Data.replaceAll("%G2%12%99","<br/>")+"</html>");
-                } catch (Exception e) {
+                    messages.messages.setText("<html>"+Data.replace("%Eg%v7%8","<br>")+"</html>");
+                }
+                catch (Exception e){
                     messages.messages.setText("<html>"+Data+"</html>");
                 }
+
 
 
             }
@@ -49,8 +54,24 @@ class runtime extends Thread {
     }
 }
 
-public class Main {
+class sendThread extends Thread{
+    String serverIP = "";
+    String Data = "";
+    public void init(String _serverIP,String _Data){
+         serverIP= _serverIP;
+         Data = _Data;
+    }
+    public void run(){
+        try {
+            Process p = Runtime.getRuntime().exec("client.exe -sendData "+serverIP+" "+Data.replaceAll(" ","%E2%96%88"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
 
+public class Main {
+    static JButton Send = new JButton("send");
     static boolean connectedToServer = false;
     static String serverIP = "";
 
@@ -71,11 +92,12 @@ public class Main {
         join.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 connectedToServer = true;
-                serverIP = "http://"+input.getText();
+                serverIP = input.getText();
                 frame.setVisible(false);
                 runtime thread = new runtime();
                 thread.init(serverIP);
                 thread.start();
+
             }
         });
 
@@ -98,10 +120,11 @@ public class Main {
 
 
 
-        messages.messages.setBounds(panel.getBounds());
+        messages.messages.setBounds(40,30,445,290);
 
         messages.messages.setFont(new Font("Arial",Font.PLAIN,20));
         messages.messages.setForeground(new Color(0, 214, 255));
+
 
         JTextField input = new JTextField("input message",16);
         input.setBounds(70,330,410,25);
@@ -112,15 +135,15 @@ public class Main {
         JButton startServer = new JButton("start server");
         startServer.setBounds(0,0,110,25);
 
-        JButton Send = new JButton("send");
+
         Send.setBounds(5,330,65,25);
 
         Send.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 try {
                     sendData(input.getText());
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+                } catch (IOException ioException) {
+                    ioException.printStackTrace();
                 }
             }
         });
@@ -160,6 +183,11 @@ public class Main {
                             try {
                                 Process p = Runtime.getRuntime().exec("cmd.exe /c start client.exe -startServ "+finalData.replaceAll(":"," "));
                                 frame2.dispose();
+                                serverIP = finalData;
+                                runtime thread = new runtime();
+                                thread.init(serverIP);
+                                thread.start();
+                                connectedToServer = true;
                             } catch (IOException ex) {
                                 ex.printStackTrace();
                             }
@@ -193,7 +221,10 @@ public class Main {
 
     public static void sendData(String Data) throws IOException {
         if(connectedToServer){
-            Process p = Runtime.getRuntime().exec("client.exe -sendData "+serverIP+" "+Data.replaceAll(" ","%E2%96%88"));
+            sendThread thread = new sendThread();
+            thread.init(serverIP,Data);
+            thread.start();
         }
     }
 }
+
