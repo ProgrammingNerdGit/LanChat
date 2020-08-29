@@ -1,72 +1,122 @@
 #2020 programming nerd
 
 
-import requests # module for geting / sending data from server
-from bs4 import BeautifulSoup # module for parseing data from server
-from http.server import HTTPServer, BaseHTTPRequestHandler # module for creating / managing server
+
+import socket
 import threading # module used for useing threads
 import time # module used for delay
 import sys # module for connection with exturnal program
 import os # mudule for finding server ip
 import random # module for finding valid port
 
-data = '' # temperary veriable for parseing the data from the server
+data = "<b>--begining of chat--</b>%Eg%v7%8" # temperary veriable for parseing the data from the server
 
 timeBetwenRefresh = 0.2 # Time in second between each time the client asks for data from server
 
 startServerOutput = True
 
-class Serv(BaseHTTPRequestHandler):
-	def do_GET(self):
-		global data
-		if(self.path[:7] == "/?text="): # checks for message post request
-			data += "\n"+self.path.split("text=")[1] # adds sent data from client to global database of messages
-			pageData = open("format.html").read().replace("//data//",data.replace("%20"," ")) # formatting data for clients computer  
-			self.send_response(200) # sends validation response to server
-		elif(self.path[:5] == "/?get"): # checks for message get request
-			pageData = open("format.html").read().replace("//data//",data.replace("%20"," "))
-			self.send_response(200)
-		else:
-			pageData = "::404::"
-			self.send_response(404)# sends invalidation response to server
+serverRunning = False
 
-		self.end_headers() # required http functon
-		self.wfile.write(bytes(pageData,'utf-8')) # sends data to client 
-	def log_message(self, format, *args):
-		return
+HEADER_LEN = 64
 
-def serverInit(httpd_,ip,port):
-		httpd = httpd_
-		if(startServerOutput):
-			print("Server Started")
-		httpd.serve_forever()
+MSG_HEADER_LEN = 10
+
+DISSCONECT_MESSAGE = "!DISSCONECT"
+
+dataTemp = ""
+
+hdr = ""
+
+clients = []
+
+def serverInit(ip,port):
+	global conn
+	s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+	s.bind((ip,int(port)))
+
+
+	s.listen()
+	while serverRunning:
+		conn,addr = s.accept()
+		thread = threading.Thread(target=handle_client,args=(conn,addr))
+		thread.start()	
+
+		print(f"[ACTIVE CONNECTIONS] {threading.activeCount()-1}")
+	try:
+		conn.close()
+	except:
+		pass
+
+def handle_client(conn,addr):
+	global hdr,data,dataTemp
+	print(f"[NEW CONNECTION]: {addr}")
+	#clients.append({"socket":conn,"ipv4":addr})
+	while serverRunning:
+		msg_length = conn.recv(HEADER_LEN).decode("utf-8")
+		if msg_length:
+			#print(conn.recv(2048))
+			msg_length = int(msg_length)
+
+			msg = conn.recv(msg_length).decode("utf-8")
+			if(msg == DISSCONECT_MESSAGE):
+				#client.remove({socket:conn,ipv4:addr})
+				break
+			elif(msg == "!GET"):
+				conn.send(data.encode("utf-8"))
+
+			else:
+				dataTemp = ""
+				data += msg+"%Eg%v7%8"
+				if(len(data.split("%Eg%v7%8"))>12):
+					replace = data.split("%Eg%v7%8")[0]+"%Eg%v7%8"
+					if(replace!="%Eg%v7%8"):
+						print(replace)
+						data = data.replace(replace,"")
+					
+				print(data)
+			# for i in range(len(clients)):
+			# 	clients[i].get("socket").send(conn.recv(msg_length+HEADER_LEN))
+			print(f"[{addr}] {msg}")
 
 class server:
 	def __init__(self,ip,port):
-		self.httpd = HTTPServer((ip,int(port)),Serv) # var for HTTP server
-		self.x = threading.Thread(target=serverInit,args=(self.httpd,ip,port)) # 'serverInit' thread
 		self.ip = ip
 		self.port = port
 	def startServer(self):
-		self.x.start() # start 'serverInit' thread
+		global serverRunning
+		serverRunning = True
+		threading.Thread(target=serverInit,args=(self.ip,self.port)).start()
+		
 	def stopServer(self):
-		self.httpd.shutdown() # shutdown server
+		global serverRunning
+		serverRunning = False # shutdown server
 
 
 
 
 class client:
 	def __init__(self,url):
-		self.url = url
-
-	def sendMessage(self,message):
-
-		page = requests.get(str(self.url+"/?text="+message),stream=True,timeout=1) # "/?text=" used int url to send data to the server (used before the message)
-
+		self.ip,self.port = url.split(":")[0],int(url.split(":")[1])
+		self.s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+		self.s.connect((self.ip,self.port))
+	def sendMessage(self,msg):
+		message = msg.encode("utf-8")
+		msg_length = len(message)
+		send_length = str(msg_length).encode("utf-8")
+		send_length += b' '*(HEADER_LEN-len(send_length)) 
+		self.s.send(send_length)
+		self.s.send(message)
+		#self.dissconect()
+		#print(self.s.recv(2048))
+		
+	def dissconect(self):
+		self.sendMessage(DISSCONECT_MESSAGE)
 
 	def getMessages(self):
-		page = requests.get(self.url+"/?get",stream=True,timeout=1) # "/?get" used in url to get data without sending data
-		return BeautifulSoup(page.content,'lxml').find("div").text.replace("%E2%96%88"," ").replace("\n","%G2%12%99") # return data parsed and in a list (%E2%96%88 is space keycode)
+		self.sendMessage("!GET")
+		self.sendMessage(DISSCONECT_MESSAGE)
+		return self.s.recv(2048).decode("utf-8")
+		
 
 		
 		
@@ -78,10 +128,12 @@ if(sys.argv[1] == "-startServ"):
 if(sys.argv[1] == "-getData"):
 	client = client(sys.argv[2]) # (sys.argv[2]) = ip)
 	print(client.getMessages()) 
+	client.dissconect()
 
 if(sys.argv[1] == "-sendData"):
 	client = client(sys.argv[2]) #(sys.argv[2]) = ip)
-	client.sendMessage(sys.argv[3]) #(sys.argv[3]) = message)
+	client.sendMessage(sys.argv[3].replace("%E2%96%88"," ")) #(sys.argv[3]) = message)
+	client.dissconect()
 
 if(sys.argv[1] == "-findServIp"):
 	ip,port ="",""
@@ -89,7 +141,6 @@ if(sys.argv[1] == "-findServIp"):
 		if(a.split(":")[0] == "   IPv4 Address. . . . . . . . . . . "):
 			ip = a.split(":")[1].replace(" ","")
 			break
-
 	
 	while True:
 		guessPort = random.randint(1000,9999)
@@ -101,4 +152,4 @@ if(sys.argv[1] == "-findServIp"):
 			print(ip+":"+str(guessPort))
 			break
 		except:
-			pass
+		 pass
